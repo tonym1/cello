@@ -1,0 +1,74 @@
+name: kafka
+description: Network consisting of kafka ordering and 2 organizations.
+version: '1.0'
+channels:
+  mychannel:
+    orderers:
+{% for orderer in allorderers %}
+      - {{ orderer.name }}
+{% endfor %}
+    peers:
+{% for peer in allpeers %}
+      {{ peer.name }}:
+        endorsingPeer: true
+        chaincodeQuery: true
+        ledgerQuery: true
+        eventSource: true
+{% endfor %}
+    chaincodes:
+      - 'dbi:v1.0.0'
+      - 'poe:v1.0.0'
+organizations:
+{% for ca in allcas %}
+  {{ ca.org }}:
+    mspid: {{ ca.org }}
+    peers:
+      - peer0-{{ ca.org }}
+      - peer1-{{ ca.org }}
+    certificateAuthorities:
+      - ca1-{{ ca.org }}
+    adminPrivateKey:
+      path: >-
+        ./test/fixtures-V1/keyfiles/{{ ca.org }}/users/Admin@{{ ca.org }}/msp/keystore/skfile
+    signedCert:
+      path: >-
+        ./test/fixtures-V1/keyfiles/{{ ca.org }}/users/Admin@{{ ca.org }}/msp/signcerts/Admin@{{ ca.org }}-cert.pem
+{% endfor %}
+orderers:
+{% for orderer in allorderers %}
+  {{ orderer.name }}:
+    url: 'grpcs://{{ orderer.name }}:7050'
+    grpcOptions:
+      ssl-target-name-override: {{ orderer.name }}
+      grpc-max-send-message-length: 15
+    tlsCACerts:
+      path: >-
+        ./test/fixtures-V1/keyfiles/{{ orderer.org }}/orderers/{{ orderer.name }}.{{ orderer.org }}/tls/ca.crt
+{% endfor %}
+peers:
+{% for peer in allpeers %}
+  {{ peer.name }}:
+    url: 'grpcs://{{ peer.name }}:7051'
+    eventUrl: 'grpcs://{{ peer.name }}:7053'
+    grpcOptions:
+      ssl-target-name-override: {{ peer.name }}
+      grpc.http2.keepalive_time: 15
+    tlsCACerts:
+      path: >-
+        ./test/fixtures-V1/keyfiles/{{ peer.org }}/peers/{{ peer.name }}.{{ peer.org }}/tls/ca.crt
+{% endfor %}
+certificateAuthorities:
+{% for ca in allcas %}
+  {{ ca.name }}:
+    url: 'https://{{ ca.name }}:7054'
+    caname: ''
+    httpOptions:
+      verify: false
+    tlsCACerts:
+      path: >-
+        ./test/fixtures-V1/keyfiles/{{ ca.org }}/tlsca/tlsca.{{ ca.org }}-cert.pem
+    registrar:
+      - enrollId: admin
+        enrollSecret: adminpw
+{% endfor %}
+

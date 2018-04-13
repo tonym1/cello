@@ -1,0 +1,6 @@
+
+#! /bin/bash
+{% for ca in allcas %}
+    cp {{ fabricworkdir }}/keyfiles/{{ ca.org }}/users/Admin@{{ ca.org }}/msp/keystore/*_sk {{ fabricworkdir }}/keyfiles/{{ ca.org }}/users/Admin@{{ ca.org }}/msp/keystore/skfile
+{% endfor %}
+
