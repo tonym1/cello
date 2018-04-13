@@ -1,0 +1,167 @@
+---
+- name: Figuring out the server architecture
+  shell: uname -m | sed 's|i686|386|' | sed 's|x86_64|amd64|'
+  register: rawarch
+
+- name: Figuring out the OS release
+  shell: lsb_release -cs
+  register: rawrelease
+
+- name: Setup variables
+  set_fact:
+    goroot: "/opt/go"
+    gopath: "/opt/gopath"
+    dbipath: "/home/{{ cluster.ssh_user }}/dbi"
+    arch: "{{ rawarch.stdout}}"
+    osrelease: "{{ rawrelease.stdout }}"
+
+- name: Ensure gopath exists
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0775
+    owner: "{{ cluster.ssh_user }}"
+  with_items:
+    - "{{ goroot }}"
+    - "{{ gopath }}"
+
+#- name: Install packages
+#  apt:
+#    name: "{{ item }}"
+#  with_items:
+#    - ['python-dev', 'python-pip', 'libtool', 'libltdl-dev', 'apt-transport-https']
+#    - ['git', 'net-tools', 'netcat-openbsd', 'autoconf', 'automake', 'ca-certificates']
+#    - ['libtool', 'curl', 'make', 'g++', 'unzip', 'build-essential', 'software-properties-common']
+
+- name: Add Docker offical GPG key
+  shell: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+
+- name: Add docker-ce repository
+  apt_repository:
+    repo: "deb [arch={{ arch }}] https://download.docker.com/linux/ubuntu {{ osrelease }} stable"
+    state: present
+
+- name: Install docker, pip and other tools via apt
+  apt:
+    name: "{{ item }}"
+  with_items:
+    - ['python-pip', 'docker-ce', 'libtool', 'libltdl-dev', 'autoconf']
+    - ['python-dev', 'build-essential']
+
+- name: Update apt and Install Docker-ce
+  apt:
+    name: docker-ce
+    update_cache: yes
+
+- name: Install pip and upgrade
+  pip:
+    name: "{{ item.name}}"
+    extra_args: "{{ item.args | default('') }}"
+  with_items:
+    - { name: "pip", args: "--upgrade" }
+    - { name: "behave" }
+#    - { name: "nose" }
+    - { name: "docker-compose" }
+    - { name: "protobuf" }
+    - { name: "couchdb==1.0" }
+
+- name: Download Node version 8
+  get_url: 
+    url: https://deb.nodesource.com/setup_8.x
+    dest: /tmp/setup_8.x
+    mode: 0775
+
+- name: sleep for 10 seconds and continue with play
+  wait_for: timeout=10
+
+- name: Setup Node
+  become: true
+  become_user: root
+  shell: >-
+    /tmp/setup_8.x > /tmp/setup.log &&
+    apt-get install nodejs -y &&
+    chmod -R 0775 /usr/lib/node_modules/
+
+- name: Download DBI code
+  become: true
+  become_user: ubuntu
+  git:
+    repo: 'https://tonym1:P0pcorn30@github.com/ericmvaughn/dbi.git'
+    dest: "{{ dbipath }}"
+    clone: yes
+    force: yes
+    version: ansible
+
+- name: Install NPM packages - Gulp, Mocha, Bower
+  npm:
+    name: "{{ item }}"
+    global: yes
+  with_items:
+    - ['gulp', 'mocha', 'bower']
+
+- name: Rebuild NPM packages - Gulp, Mocha, Bower
+  shell: >-
+    npm rebuild gulp >>/tmp/gulp.log &&
+    npm rebuild mocha >>/tmp/mocha.log &&
+    npm rebuild bower >>/tmp/bower.log
+  args:
+    chdir: "{{ dbipath }}"
+
+
+- name: Install packages based on package.json.
+  npm:
+    path: "{{ dbipath }}"
+    ignore_scripts: yes
+
+- name: Post-install Bower
+  bower:
+       path: "{{ dbipath }}"
+
+- name: NPM Post-Install - Bower, binary-download
+  become: true
+  become_user: ubuntu
+  shell: >-
+    sh binary-download.sh
+  args:
+    chdir: "{{ dbipath }}"
+
+- name: rebuild grpc 
+  shell: >-
+    npm rebuild grpc >/tmp/grpc.log &&
+    pwd >>/tmp/grpc.log
+  args:
+    chdir: "{{ dbipath }}"
+
+- name: Grant the user docker permission
+  user:
+    name: "{{ cluster.ssh_user }}"
+    append: yes
+    groups: "docker,root"
+
+- name: Retrive golang binary and unpackage it
+  unarchive:
+    src: "{{ cluster.go_repo }}"
+    dest: "/opt"
+    remote_src: True
+
+- name: Fix up the search domain
+  lineinfile:
+    path: /etc/resolvconf/resolv.conf.d/base
+    state: present
+    line: search {{ cluster.domain | default('fabric') }}
+
+- name: Setup golang profile
+  template:
+    src: "{{ playbook_dir }}/../env_dbiflanneld/fastinitnode/templates/goroot.j2"
+    dest: "/etc/profile.d/goroot.sh"
+
+- name: Place the certificate in the right place
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.target }}"
+    owner: "{{ cluster.ssh_user }}"
+    group: "{{ cluster.ssh_user }}"
+    mode: 0400
+  with_items:
+    - { src: "{{ cluster.public_key_file }}", target: "{{ gopath }}/id_rsa.pub" }
+    - { src: "{{ cluster.private_key_file }}", target: "{{ gopath }}/id_rsa" }

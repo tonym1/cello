@@ -1,0 +1,16 @@
+---
+- name: Gather docker network data
+#  hosts: allnodes
+#  user: "{{ fabric.ssh_user }}"
+#  vars_files:
+#    - "./../../vars/{{ env }}.yml"
+#  tasks:
+#- name: docker network inspect
+  shell: |
+    docker network inspect bridge > /tmp/docker_ip/{{ hostvars[inventory_hostname].inter_name }}
+  register: dockercontainers
+- name: fetch the data to ansible controller
+  fetch: 
+    src: /tmp/docker_ip/{{ hostvars[inventory_hostname].inter_name }}
+    dest: /tmp/docker_ip/
+    flat: yes

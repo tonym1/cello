@@ -1,0 +1,20 @@
+---
+- name: get docker ip addresses
+  hosts: allnodes
+  gather_facts: true
+  user: "{{ fabric.ssh_user }}"
+  vars_files:
+    - "./../../vars/{{ env }}.yml"
+  tasks:
+    - include_tasks: "getaddrs/tasks/{{ mode }}.yml"
+  tags: "getaddr"
+
+- name: generate network.yaml on builder host
+  hosts: builders
+  gather_facts: false
+  user: "{{ fabric.ssh_user }}"
+  vars_files:
+    - "./../../vars/{{ env }}.yml"
+  tasks:
+    - include: "useaddrs/tasks/{{ mode }}.yml"
+  tags: "useaddrs"

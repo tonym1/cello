@@ -1,0 +1,17 @@
+name: kafka
+description: Network consisting of kafka ordering and 2 organizations.
+version: '1.0'
+client:
+  organization: org1
+  credentialStore:
+    path: ./tmp/keyValStore_v1/org1
+    cryptoStore:
+      path: ./tmp/keyValStore_v1/org1/keys
+    wallet: wallet-name
+  connection:
+    timeout:
+      peer:
+        endorser: 60
+        eventHub: 60
+        eventReg: 3
+      orderer: 30

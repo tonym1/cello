@@ -1,0 +1,56 @@
+---
+
+#- name: Uninstall Bower
+#  become: true
+#  become_user: ubuntu
+#  shell: >-
+#    /home/ubuntu/.nvm/versions/node/v8.9.3/bin/bower uninstall
+
+- name: Remove DBI
+  file: 
+    path: /home/ubuntu/dbi
+    state: absent
+
+- name: Uninstall NPM packages - Gulp, Mocha, Bower
+  npm:
+    name: "{{ item }}"
+    global: yes
+    state: absent
+  with_items:
+    - ['gulp', 'mocha', 'bower']
+
+- name: Uninstall Node
+  become: true
+  become_user: root
+  apt:
+   name: nodejs
+   state: absent
+
+- name: Uninstall pip and upgrade
+  pip:
+    name: "{{ item.name}}"
+    state: absent
+  with_items:
+    - { name: "pip" }
+    - { name: "behave" }
+#    - { name: "nose" }
+    - { name: "docker-compose" }
+    - { name: "protobuf" }
+    - { name: "couchdb==1.0" }
+
+- name: node nose cleanup 
+  file:
+    path: /usr/local/man/man1
+    state: absent
+
+- name: Uninstall packages
+  apt:
+    name: "{{ item }}"
+    state: absent
+  with_items:
+    - ['python-pip', 'docker-ce', 'libtool', 'libltdl-dev', 'autoconf']
+#    - ['docker.io', 'python-dev', 'python-pip', 'libtool', 'libltdl-dev']
+#    - ['git', 'net-tools', 'netcat-openbsd', 'autoconf', 'automake']
+#    - ['libtool', 'curl', 'make', 'g++', 'unzip', 'build-essential']
+
+
