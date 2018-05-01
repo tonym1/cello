@@ -196,6 +196,9 @@ jspm_packages
 !/**/lib
 
 # Ansible modules
-src/agent/ansible/run/*
-src/agent/ansible/vars/*
+src/agent/ansible/run/ans*
+src/agent/ansible/run/runhosts.tpl
+src/agent/ansible/run/runhosts.all
+src/agent/ansible/run/token
+#src/agent/ansible/vars/*
 src/agent/ansible/*.retry
