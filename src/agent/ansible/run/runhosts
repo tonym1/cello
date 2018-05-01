@@ -1,0 +1,14 @@
+    cloud ansible_host=127.0.0.1 ansible_python_interpreter=python
+    208.43.80.246 private_ip=10.25.224.207 public_ip=208.43.80.246 inter_name=fabric001
+    208.43.236.10 private_ip=10.102.88.130 public_ip=208.43.236.10 inter_name=fabric002
+
+    [allnodes]
+    208.43.80.246
+    208.43.236.10
+
+    [etcdnodes]
+    208.43.80.246
+    208.43.236.10
+
+    [builders]
+    208.43.80.246
