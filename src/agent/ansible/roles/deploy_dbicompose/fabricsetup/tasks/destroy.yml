@@ -1,8 +1,10 @@
 ---
 - name: Setup variables
   set_fact:
+    current_host: "{{ hostvars[inventory_hostname].inter_name }}"
+    dbipath: "/home/{{ fabric.ssh_user }}/dbi"
     fabricworkdir: "/opt/gopath/{{ env }}/test/fixtures-V1"
-#    fabricworkdir: "/opt/gopath/{{ env }}/fabric"
+    clihost: "{{ groups['builders'] }}"
 
 - name: Check docker compose file stats
   stat:
@@ -14,6 +16,11 @@
     - "ca-compose"
     - "orderer-compose"
     - "peer-compose"
+
+- name: Zip dbi ansible directory
+  archive:
+    path: "{{ dbipath }}/ansible"
+    dest: "{{ dbipath }}/dbi_ansible.tgz"
 
 - name: Shut down fabric components
   command: "docker-compose -p {{ env }}.{{ item.item }} -f {{ fabricworkdir }}/run/{{ item.item }}.yml down"
@@ -56,3 +63,14 @@
   file:
     path: "{{ fabricworkdir }}/run"
     state: absent
+
+- name: Remove network config
+  file:
+    path: "{{ dbipath }}/{{ item }}"
+    state: absent
+  with_items:
+    - "credentials.js"
+    - "network.yaml"
+    - "org1.yaml"
+    - "org2.yaml"
+

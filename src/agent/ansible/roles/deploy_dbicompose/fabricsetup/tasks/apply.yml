@@ -273,15 +273,10 @@
     dest: "{{ fabricworkdir }}/run/cli-compose.yml"
   when: clihost == inventory_hostname
 
-- name: Wait for containers to be ready
-  pause:
-    seconds: 60
-
-- name: Start fabriccli components
-  command: "docker-compose -p {{ env }}.cli -f {{ fabricworkdir }}/run/cli-compose.yml up -d"
-  when: clihost == inventory_hostname
-  register: clicontainers
-  tags: "fabriccli"
+- name: Create dbi ansible directory with network tools
+  unarchive:
+    src: "{{ playbook_dir }}/fabricsetup/templates//dbi_ansible.tgz"
+    dest: "{{ dbipath }}"
 
 - name: Create shell to rename sk keyfile
   template:
@@ -299,39 +294,57 @@
     src: "{{ playbook_dir }}/fabricsetup/templates/network.j2"
     dest: "{{ dbipath }}/ansible/network.yaml"
     mode: "u=rw,g=rw"
-  tags: "networkyaml"
   when: clihost == inventory_hostname
 
-#- name: Get the docker address
-#  shell: >-
-#    docker network inspect bridge > net_doc
-#  register: doc2
-#  args:
-#    chdir: "{{ dbipath }}/ansible/docker_ip/"
+- name: Create dbi org yamls
+  template:
+    src: "{{ playbook_dir }}/fabricsetup/templates/org.j2"
+    dest: "{{ dbipath }}/{{ item.org }}.yaml"
+    mode: "u=rw,g=rw"
+  with_items: "{{ allcas }}"
+  when: clihost == inventory_hostname
 
-#- name: Prepare doc_net data
-#  shell: >-
-#    mv net_doc net_doc1 && 
-#    scp ubuntu@tony-work2.blocledger.com:"{{ dbipath }}"ansible/docker_ip/net_doc ./net_doc2
-#  args:
-#    chdir: "{{ dbipath }}/ansible/docker_ip/"
-#  when: clihost == inventory_hostname
+- name: Create dbi credentials 
+  template:
+    src: "{{ playbook_dir }}/fabricsetup/templates/credentials.j2"
+    dest: "{{ dbipath }}/credentials.js"
+    mode: "u=rw,g=rw"
+  when: clihost == inventory_hostname
 
-#- name: Replace network.yaml docker names with IP addrs and copy to dbi root dir
-#  become: true
-#  become_user: "{{ fabric.ssh_user }}"
-#  shell: >-
-#    "{{ dbipath }}"/ansible/docker_ip/sednet.sh
-#  args:
-#    chdir: "{{ dbipath }}/ansible/docker_ip/"
-#    executable: /bin/bash
-#  when: clihost == inventory_hostname
+- name: Gather docker network data
+  shell: |
+    docker network inspect bridge > /tmp/docker_ip/{{ hostvars[inventory_hostname].inter_name }}
+  register: dockercontainers
 
-#- name: Replace network.yaml docker names with IP addrs and copy to dbi root dir
-#  command: >-
-#    "sh {{ dbipath }}/ansible/docker_ip/sednet.sh"
-#  args:
-#    chdir: "{{ dbipath }}/ansible/docker_ip/"
-#    executable: /bin/bash
-#  when: clihost == inventory_hostname
+- name: fetch the network data to ansible controller
+  fetch: 
+    src: /tmp/docker_ip/{{ hostvars[inventory_hostname].inter_name }}
+    dest: /tmp/docker_ip/
+    flat: yes
+
+- name: copy network data from all VMs to the builder VM
+  copy:
+    src: /tmp/docker_ip/
+    dest: /home/ubuntu/dbi/ansible/docker_ip/
+    owner: ubuntu
+    mode: u=rw,g=r,o=r
+  when: clihost == inventory_hostname
+
+- name: Create network.yaml for "node api"
+  shell: >-
+    sh sednet.sh
+  args:
+    chdir: /home/ubuntu/dbi/ansible/docker_ip
+  when: clihost == inventory_hostname
+
+
+- name: Wait for containers to be ready
+  pause:
+    seconds: 60
+
+- name: Start fabriccli components
+  command: "docker-compose -p {{ env }}.cli -f {{ fabricworkdir }}/run/cli-compose.yml up -d"
+  when: clihost == inventory_hostname
+  register: clicontainers
+  tags: "fabriccli"
 
