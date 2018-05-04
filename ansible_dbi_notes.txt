@@ -1,0 +1,90 @@
+ANSIBLE DEPLOYMENT FOR DBI
+
+These are instructions for using ansible on EXISTING VMs. Cello (with Ansible Agent) must be installed on one linux machine – the “ansible controller”. Ansible can then be used to install DBI on the same and/or other linux platforms. For reference:
+
+	http://hyperledger-cello.readthedocs.io/en/latest/ansible-agent-how-to/
+
+Log into VM and add user a user “ubuntu”. (other user names will require edits to Ansible yamls)
+
+Make the user who can do sudo su without prompting password :
+	vi /etc/sudoers.d/90-cloud-init-users…
+add this line 	
+	“ubuntu ALL=(ALL) NOPASSWD:ALL”
+
+Setup ssh key pair and key ssh login
+	mkdir -p ~/.ssh && cd ~/.ssh && ssh-keygen -t rsa -f fd -P "" 
+	cat ~/.ssh/fd.pub >> ~/.ssh/authorized_keys 
+The above commands create a key pair named fd and fd.pub. If you choose to use other names, you will need to make sure these names are used in ~/cello/src/agent/ansible/vars/bl.yml and dbi.yml file in steps below. Files bl.yml and dbi.yml use fd and fd.pub as the default value for ssh key pairs.
+Log out, log back in and setup ssh agent
+	eval $(ssh-agent -s) && ssh-add ~/.ssh/fd 
+The above command create a ssh-agent so that you do not have to provide ssh keys in your current session when you try to establish a ssh connection, Notice that this only establish a ssh-agent for current session. If you log out and back in, you will have to run the above command again. Add this line to ~/.bashrc of the controller.
+
+Add these lines to bashrc (controller and targets):
+
+	eval $(ssh-agent -s) && ssh-add ~/.ssh/fd
+	export SETUP=docker
+	export DEBUG='dbi'
+	export HFC_LOGGING='{"debug": "console"}'
+
+Install on controller:
+  sudo apt-get update 
+  sudo apt-get install python-dev python-pip libssl-dev libffi-dev docker.io -y 
+  sudo pip install ansible
+  sudo gpasswd -a $USER docker 
+  cd ~ && git clone https://github.com/tonym1/cello.git 
+
+Install on Remote VMs
+  sudo apt-get update  
+  sudo apt-get install python-dev python-pip libssl-dev libffi-dev docker.io -y 
+  sudo gpasswd -a $USER docker 
+
+
+
+
+
+
+
+
+
+
+TO CREATE THE FABRIC:
+
+On the Ansible Controller (tony-dev) CD to ~/cello/src/agents/ansible...
+
+To build network for containers:
+  ansible-playbook -i run/runhosts -e "mode=apply env=bl env_type=dbiflanneld" initcluster.yml 
+
+To deploy Fabric:
+  ansible-playbook -i run/runhosts -e "mode=apply env=dbi deploy_type=dbicompose" setupfabric.yml
+
+
+TO RUN THE DBI APP:
+
+On the “builder node” (tony-work1) in ~/home/dbi…
+
+Run the app:
+  node api
+
+Connect from any browser to tony-work1.blocledger.com:3000
+
+
+
+To Remove fabric:
+
+On the Ansible Controller (tony-dev) CD to ~/cello/src/agents/ansible...
+
+  ansible-playbook -i run/runhosts -e "mode=destroy env=dbi deploy_type=dbicompose" setupfabric.yml
+
+To remove docker network:
+
+  ansible-playbook -i run/runhosts -e "mode=destroy env=bl env_type=dbiflanneld" initcluster.yml
+
+
+
+
+Flannel debug:
+  sudo journalctl -u flanneld
+ETCD issues
+If etcd is having problems, the registrator container will likely exit. Check the status with “service etcd status“. To fix it, the /opt/fabric/bin/etcddata/ must be deleted on ALL VMs and then etcd restarted.
+
+ 
