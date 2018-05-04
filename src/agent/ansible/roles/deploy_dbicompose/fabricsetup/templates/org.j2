@@ -2,11 +2,11 @@ name: kafka
 description: Network consisting of kafka ordering and 2 organizations.
 version: '1.0'
 client:
-  organization: org1
+  organization: {{ item.org }}
   credentialStore:
-    path: ./tmp/keyValStore_v1/org1
+    path: ./tmp/keyValStore_v1/{{ item.org }}
     cryptoStore:
-      path: ./tmp/keyValStore_v1/org1/keys
+      path: ./tmp/keyValStore_v1/{{ item.org }}/keys
     wallet: wallet-name
   connection:
     timeout:
@@ -15,3 +15,4 @@ client:
         eventHub: 60
         eventReg: 3
       orderer: 30
+

@@ -90,7 +90,8 @@
     dest: "{{ dbipath }}"
     clone: yes
     force: yes
-    version: ansible
+# Use version to specify a specific branch 
+#    version: ansible
 
 - name: Install NPM packages - Gulp, Mocha, Bower
   npm:
@@ -109,9 +110,17 @@
 
 
 - name: Install packages based on package.json.
+  become: true
+  become_user: ubuntu
   npm:
     path: "{{ dbipath }}"
     ignore_scripts: yes
+
+- name: Rebuild NPM packages - x509
+  shell: >-
+    npm rebuild x509 >>/tmp/x509.log
+  args:
+    chdir: "{{ dbipath }}"
 
 - name: Post-install Bower
   bower:
