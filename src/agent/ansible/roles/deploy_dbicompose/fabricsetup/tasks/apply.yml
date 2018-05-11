@@ -346,5 +346,19 @@
   command: "docker-compose -p {{ env }}.cli -f {{ fabricworkdir }}/run/cli-compose.yml up -d"
   when: clihost == inventory_hostname
   register: clicontainers
-  tags: "fabriccli"
+
+- name: Run the Blocledger app
+  command: pm2 start api.js
+  args:
+    chdir: "{{ dbipath }}"
+  when: clihost == inventory_hostname
+
+- name: Display api.js status
+  command: pm2 list
+  register: apistatus
+  when: inventory_hostname in groups['builders']
+
+- debug:
+    var: apistatus.stdout_lines
+  when: inventory_hostname in groups['builders']
 

@@ -57,17 +57,23 @@ To build network for containers:
 To deploy Fabric:
   ansible-playbook -i run/runhosts -e "mode=apply env=dbi deploy_type=dbicompose" setupfabric.yml
 
+TO VERIFY THE FABRIC NETWORK:
+  ansible-playbook -i run/runhosts -e "mode=verify env=dbi" verify.yml
 
 TO RUN THE DBI APP:
 
+The "setupfabric.yml" above also runs the node app using "pm2". To use the node api.js apart from the ansible scripts...
+ 
 On the “builder node” (tony-work1) in ~/home/dbi…
 
-Run the app:
-  node api
+  Stop the app:
+    pm2 kill
+  Start the api
+    pm2 start api.js 
+      or
+    node api
 
-Connect from any browser to tony-work1.blocledger.com:3000
-
-
+CONNECT FROM ANY BROWSER to tony-work1.blocledger.com:3000
 
 To Remove fabric:
 

@@ -16,3 +16,10 @@
 
     - debug:
         var: dockercontainers.stdout_lines
+
+    - name: Display api.js status
+      command: pm2 list
+      register: apistatus
+
+    - debug:
+        var: apistatus.stdout_lines
