@@ -4,7 +4,23 @@
     current_host: "{{ hostvars[inventory_hostname].inter_name }}"
     dbipath: "/home/{{ fabric.ssh_user }}/dbi"
     fabricworkdir: "/opt/gopath/{{ env }}/test/fixtures-V1"
-    clihost: "{{ groups['builders'] }}"
+    clihost: "{{ groups['allnodes'] }}"
+
+- name: Stop the Blocledger app
+  command: pm2 stop api
+  args:
+    chdir: "{{ dbipath }}"
+  when: inventory_hostname in groups['builders']
+  ignore_errors: yes
+
+- name: Display api.js status
+  command: pm2 list
+  register: apistatus
+  when: inventory_hostname in groups['builders']
+
+- debug:
+    var: apistatus.stdout_lines
+  when: inventory_hostname in groups['builders']
 
 - name: Check docker compose file stats
   stat:
@@ -16,11 +32,6 @@
     - "ca-compose"
     - "orderer-compose"
     - "peer-compose"
-
-- name: Zip dbi ansible directory
-  archive:
-    path: "{{ dbipath }}/ansible"
-    dest: "{{ dbipath }}/dbi_ansible.tgz"
 
 - name: Shut down fabric components
   command: "docker-compose -p {{ env }}.{{ item.item }} -f {{ fabricworkdir }}/run/{{ item.item }}.yml down"
@@ -73,4 +84,10 @@
     - "network.yaml"
     - "org1.yaml"
     - "org2.yaml"
+
+- name: Make sure that working directory exists and clean
+  file:
+    path: "{{ dbipath }}/tmp/keyValStore_v1"
+    state: absent
+    mode: 0775
 

@@ -21,5 +21,7 @@ services:
 {% endif %}
     volumes:
       - {{ fabricworkdir }}/run/keyfiles/{{ ca.org }}:/etc/hyperledger/fabric-ca-server-config
+      - {{ fabricworkdir }}/run/keyfiles/{{ ca.org }}/ca:/etc/hyperledger/fabric-ca-server
     command: fabric-ca-server start -b {{ fabric.ca.admin }}:{{ fabric.ca.adminpw }} -d
+
 {% endfor %}

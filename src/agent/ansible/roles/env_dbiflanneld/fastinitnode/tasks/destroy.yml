@@ -17,7 +17,7 @@
     global: yes
     state: absent
   with_items:
-    - ['gulp', 'mocha', 'bower']
+    - ['gulp', 'mocha', 'bower', 'pm2']
 
 - name: Uninstall Node
   become: true

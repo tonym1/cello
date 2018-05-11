@@ -98,7 +98,7 @@
     name: "{{ item }}"
     global: yes
   with_items:
-    - ['gulp', 'mocha', 'bower']
+    - ['gulp', 'mocha', 'bower', 'pm2']
 
 - name: Rebuild NPM packages - Gulp, Mocha, Bower
   shell: >-
