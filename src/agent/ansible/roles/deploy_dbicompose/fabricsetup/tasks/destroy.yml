@@ -39,15 +39,6 @@
   with_items: "{{ cfiles.results }}"
   no_log: true
 
-- name: Check if there are dead containers
-  command: docker ps -a -f status=exited -q
-  register: deadcontainers
-
-- name: Clean up the finished containers as well
-  shell: docker rm -f $(docker ps -a -f status=exited -q)
-  when: deadcontainers.stdout_lines | length > 0
-  no_log: true
-
 - name: Test if there are any chaincode container images
   shell: docker images | grep "dev-*" | cat | awk '{print $1}'
   register: images
@@ -66,6 +57,16 @@
 - name: Remove any hyperledger containers
   shell: docker ps -a | grep "hyper*" | cat | awk '{print $1}' | xargs docker rm -f
   when: ctrs.stdout != ""
+  no_log: true
+
+- name: Check if there are dead containers
+  command: docker ps -a -f status=exited -q
+  register: deadcontainers
+
+- name: Clean up the finished containers as well
+  shell: docker rm -f $(docker ps -a -f status=exited -q)
+  ignore_errors: yes
+#  when: deadcontainers.stdout_lines | length > 0
   no_log: true
 
 - name: Clean up the working directory
