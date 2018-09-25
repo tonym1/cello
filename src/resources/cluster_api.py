@@ -14,11 +14,14 @@ from common import log_handler, LOG_LEVEL, \
     request_get, make_ok_resp, make_fail_resp, \
     request_debug, request_json_body, \
     CODE_CREATED, CODE_NOT_FOUND, \
-    NETWORK_TYPES, NETWORK_TYPE_FABRIC_PRE_V1, NETWORK_TYPE_FABRIC_V1, \
+    NETWORK_TYPES, NETWORK_TYPE_FABRIC_PRE_V1, \
+    NETWORK_TYPE_FABRIC_V1, NETWORK_TYPE_FABRIC_V1_1, \
+    NETWORK_TYPE_FABRIC_V1_2, \
     CONSENSUS_PLUGINS_FABRIC_V1, CONSENSUS_MODES, NETWORK_SIZE_FABRIC_PRE_V1, \
     FabricPreNetworkConfig, FabricV1NetworkConfig
 
 from modules import cluster_handler, host_handler
+from tasks import release_cluster, delete_cluster
 
 logger = logging.getLogger(__name__)
 logger.setLevel(LOG_LEVEL)
@@ -138,10 +141,9 @@ def cluster_release(r):
     if not cluster_id:
         logger.warning("No cluster_id is given")
         return make_fail_resp("No cluster_id is given")
-    if cluster_handler.release_cluster(cluster_id):
-        return make_ok_resp()
+    release_cluster.delay(cluster_id)
 
-    return make_fail_resp("cluster release failed")
+    return make_ok_resp()
 
 
 @front_rest_v2.route('/cluster_op', methods=['GET', 'POST'])
@@ -237,6 +239,16 @@ def cluster_create():
         config = FabricV1NetworkConfig(
             consensus_plugin=body['consensus_plugin'],
             size=size)
+    elif network_type == NETWORK_TYPE_FABRIC_V1_1:
+        config = FabricV1NetworkConfig(
+            consensus_plugin=body['consensus_plugin'],
+            size=size)
+        config.network_type = NETWORK_TYPE_FABRIC_V1_1
+    elif network_type == NETWORK_TYPE_FABRIC_V1_2:
+        config = FabricV1NetworkConfig(
+            consensus_plugin=body['consensus_plugin'],
+            size=size)
+        config.network_type = NETWORK_TYPE_FABRIC_V1_2
     else:
         error_msg = "Unknown network_type={}".format(network_type)
         logger.warning(error_msg)
@@ -283,16 +295,8 @@ def cluster_delete():
     else:
         logger.debug("cluster delete with id={0}, col_name={1}".format(
             cluster_id, col_name))
-        if col_name == "active":
-            result = cluster_handler.delete(id=cluster_id)
-        else:
-            result = cluster_handler.delete_released(id=cluster_id)
-        if result:
-            return make_ok_resp()
-        else:
-            error_msg = "Failed to delete cluster {}".format(cluster_id)
-            logger.warning(error_msg)
-            return make_fail_resp(error=error_msg)
+        delete_cluster.delay(cluster_id, col_name)
+        return make_ok_resp()
 
 
 @bp_cluster_api.route('/clusters', methods=['GET', 'POST'])

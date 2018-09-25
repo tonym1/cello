@@ -23,10 +23,11 @@ from common import db, log_handler, LOG_LEVEL, utils
 from common import CLUSTER_PORT_START, CLUSTER_PORT_STEP, \
     NETWORK_TYPE_FABRIC_PRE_V1, NETWORK_TYPE_FABRIC_V1, \
     CONSENSUS_PLUGINS_FABRIC_V1, \
+    NETWORK_TYPE_FABRIC_V1_1, NETWORK_TYPE_FABRIC_V1_2, \
     WORKER_TYPES, WORKER_TYPE_DOCKER, WORKER_TYPE_SWARM, WORKER_TYPE_K8S, \
     WORKER_TYPE_VSPHERE, VMIP, \
     NETWORK_SIZE_FABRIC_PRE_V1, \
-    PEER_SERVICE_PORTS, EXPLORER_PORTS, \
+    PEER_SERVICE_PORTS, \
     ORDERER_SERVICE_PORTS, \
     NETWORK_STATUS_CREATING, NETWORK_STATUS_RUNNING, NETWORK_STATUS_DELETING
 
@@ -108,15 +109,13 @@ class ClusterHandler(object):
             return {}
         return self._schema(cluster)
 
-    def gen_service_urls(self, cid, peer_ports, ca_ports, orderer_ports,
-                         explorer_ports):
+    def gen_service_urls(self, cid, peer_ports, ca_ports, orderer_ports):
         """
         Generate the service urls based on the mapping ports
         :param cid: cluster id to operate with
         :param peer_ports: peer ports mapping
         :param ca_ports: ca ports mapping
         :param orderer_ports: orderer ports mapping
-        :param explorer_ports: explorer ports mapping
         :return: service url mapping. {} means failure
         """
         access_peer = 'peer0.org1.example.com'
@@ -138,8 +137,6 @@ class ClusterHandler(object):
             service_urls[k] = "{}:{}".format(ca_host_ip, v)
         for k, v in orderer_ports.items():
             service_urls[k] = "{}:{}".format(ca_host_ip, v)
-        for k, v in explorer_ports.items():
-            service_urls[k] = "{}:{}".format(peer_host_ip, v)
         return service_urls
 
     def gen_ports_mapping(self, peer_num, ca_num, start_port, host_id):
@@ -154,8 +151,7 @@ class ClusterHandler(object):
         request_port_num = \
             peer_num * (len(peer_service_ports.items())) + \
             ca_num * len(ca_service_ports.items()) + \
-            len(ORDERER_SERVICE_PORTS.items()) + \
-            len(EXPLORER_PORTS.items())
+            len(ORDERER_SERVICE_PORTS.items())
         logger.debug("request port number {}".format(request_port_num))
 
         if start_port <= 0:  # need to dynamic find available ports
@@ -169,7 +165,7 @@ class ClusterHandler(object):
             logger.debug("ports {}".format(ports))
 
         peer_ports, ca_ports, orderer_ports = {}, {}, {}
-        explorer_ports, all_ports = {}, {}
+        all_ports = {}
 
         if peer_num > 1:
             org_num_list = [1, 2]
@@ -197,20 +193,15 @@ class ClusterHandler(object):
             orderer_ports[k] = ports[pos]
             logger.debug("pos={}".format(pos))
             pos += 1
-        for k, v in EXPLORER_PORTS.items():  # explorer ports
-            explorer_ports[k] = ports[pos]
-            pos += 1
 
         all_ports.update(peer_ports)
         all_ports.update(ca_ports)
         all_ports.update(orderer_ports)
-        all_ports.update(explorer_ports)
 
-        return all_ports, peer_ports, ca_ports, orderer_ports, explorer_ports
+        return all_ports, peer_ports, ca_ports, orderer_ports
 
     def _create_cluster(self, cluster, cid, mapped_ports, worker, config,
-                        user_id, peer_ports, ca_ports, orderer_ports,
-                        explorer_ports):
+                        user_id, peer_ports, ca_ports, orderer_ports):
         # start compose project, failed then clean and return
         logger.debug("Start compose project with name={}".format(cid))
         containers = self.cluster_agents[worker.type] \
@@ -232,8 +223,8 @@ class ClusterHandler(object):
             service_urls = self.cluster_agents[worker.type]\
                                .get_services_urls(cid)
         else:
-            service_urls = self.gen_service_urls(cid, peer_ports, ca_ports,
-                                                 orderer_ports, explorer_ports)
+            service_urls = self.gen_service_urls(cid, peer_ports,
+                                                 ca_ports, orderer_ports)
         # update the service port table in db
         for k, v in service_urls.items():
             service_port = ServicePort(name=k, ip=v.split(":")[0],
@@ -295,7 +286,7 @@ class ClusterHandler(object):
         ca_num = 2 if peer_num > 1 else 1
 
         cid = uuid4().hex
-        mapped_ports, peer_ports, ca_ports, orderer_ports, explorer_ports = \
+        mapped_ports, peer_ports, ca_ports, orderer_ports = \
             self.gen_ports_mapping(peer_num, ca_num, start_port, host_id)
         if not mapped_ports:
             logger.error("mapped_ports={}".format(mapped_ports))
@@ -327,8 +318,7 @@ class ClusterHandler(object):
                                                       mapped_ports, worker,
                                                       config, user_id,
                                                       peer_ports, ca_ports,
-                                                      orderer_ports,
-                                                      explorer_ports))
+                                                      orderer_ports))
         t.start()
         return cid
 
@@ -383,6 +373,14 @@ class ClusterHandler(object):
         if network_type == NETWORK_TYPE_FABRIC_V1:
             config = FabricV1NetworkConfig(consensus_plugin=consensus_plugin,
                                            size=cluster_size)
+        elif network_type == NETWORK_TYPE_FABRIC_V1_1:
+            config = FabricV1NetworkConfig(consensus_plugin=consensus_plugin,
+                                           size=cluster_size)
+            config.network_type = NETWORK_TYPE_FABRIC_V1_1
+        elif network_type == NETWORK_TYPE_FABRIC_V1_2:
+            config = FabricV1NetworkConfig(consensus_plugin=consensus_plugin,
+                                           size=cluster_size)
+            config.network_type = NETWORK_TYPE_FABRIC_V1_2
         elif network_type == NETWORK_TYPE_FABRIC_PRE_V1:
             config = FabricPreNetworkConfig(consensus_plugin=consensus_plugin,
                                             consensus_mode='',
@@ -516,6 +514,16 @@ class ClusterHandler(object):
             config = FabricV1NetworkConfig(
                 consensus_plugin=c.get('consensus_plugin'),
                 size=c.get('size'))
+        elif network_type == NETWORK_TYPE_FABRIC_V1_1:
+            config = FabricV1NetworkConfig(
+                consensus_plugin=c.get('consensus_plugin'),
+                size=c.get('size'))
+            config.network_type = NETWORK_TYPE_FABRIC_V1_1
+        elif network_type == NETWORK_TYPE_FABRIC_V1_2:
+            config = FabricV1NetworkConfig(
+                consensus_plugin=c.get('consensus_plugin'),
+                size=c.get('size'))
+            config.network_type = NETWORK_TYPE_FABRIC_V1_2
         else:
             return False
 
@@ -570,6 +578,16 @@ class ClusterHandler(object):
             config = FabricV1NetworkConfig(
                 consensus_plugin=c.get('consensus_plugin'),
                 size=c.get('size'))
+        elif network_type == NETWORK_TYPE_FABRIC_V1_1:
+            config = FabricV1NetworkConfig(
+                consensus_plugin=c.get('consensus_plugin'),
+                size=c.get('size'))
+            config.network_type = NETWORK_TYPE_FABRIC_V1_1
+        elif network_type == NETWORK_TYPE_FABRIC_V1_2:
+            config = FabricV1NetworkConfig(
+                consensus_plugin=c.get('consensus_plugin'),
+                size=c.get('size'))
+            config.network_type = NETWORK_TYPE_FABRIC_V1_2
         else:
             return False
 
@@ -621,6 +639,16 @@ class ClusterHandler(object):
             config = FabricV1NetworkConfig(
                 consensus_plugin=c.get('consensus_plugin'),
                 size=c.get('size'))
+        elif network_type == NETWORK_TYPE_FABRIC_V1_1:
+            config = FabricV1NetworkConfig(
+                consensus_plugin=c.get('consensus_plugin'),
+                size=c.get('size'))
+            config.network_type = NETWORK_TYPE_FABRIC_V1_1
+        elif network_type == NETWORK_TYPE_FABRIC_V1_2:
+            config = FabricV1NetworkConfig(
+                consensus_plugin=c.get('consensus_plugin'),
+                size=c.get('size'))
+            config.network_type = NETWORK_TYPE_FABRIC_V1_2
         else:
             return False
 
@@ -662,6 +690,16 @@ class ClusterHandler(object):
             config = FabricV1NetworkConfig(
                 consensus_plugin=c.get('consensus_plugin'),
                 size=c.get('size'))
+        elif network_type == NETWORK_TYPE_FABRIC_V1_1:
+            config = FabricV1NetworkConfig(
+                consensus_plugin=c.get('consensus_plugin'),
+                size=c.get('size'))
+            config.network_type = NETWORK_TYPE_FABRIC_V1_1
+        elif network_type == NETWORK_TYPE_FABRIC_V1_2:
+            config = FabricV1NetworkConfig(
+                consensus_plugin=c.get('consensus_plugin'),
+                size=c.get('size'))
+            config.network_type = NETWORK_TYPE_FABRIC_V1_2
         else:
             return False
         if not self.create(name=cluster_name, host_id=host_id, config=config):
@@ -822,7 +860,7 @@ class ClusterHandler(object):
                 self.db_update_one({"id": cluster_id},
                                    {"health": "FAIL"})
                 return False
-        elif cluster.get('network_type') == NETWORK_TYPE_FABRIC_V1:
+        elif "fabric-1" in cluster.get('network_type'):
             service_url = cluster.get("service_url", {})
             health_ok = True
             for url in service_url.values():

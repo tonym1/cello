@@ -34,7 +34,7 @@ echo_b "Check node:9.2 image."
 
 # docker image
 
-for IMG in baseimage engine mongo nginx operator-dashboard user-dashboard watchdog ; do
+for IMG in baseimage engine mongo operator-dashboard user-dashboard watchdog ; do
 	HLC_IMG=hyperledger/cello-${IMG}
 	#if [ -z "$(docker images -q ${HLC_IMG}:${ARCH}-${VERSION} 2> /dev/null)" ]; then  # not exist
 	echo_b "Pulling ${HLC_IMG}:${ARCH}-${VERSION} from dockerhub"
@@ -44,5 +44,11 @@ for IMG in baseimage engine mongo nginx operator-dashboard user-dashboard watchd
 	#	echo_g "${HLC_IMG} already exist locally"
 	#fi
 done
+
+# We now use official images instead of customized one
+docker pull mongo:3.4.10
+
+# NFS service
+docker pull itsthenetwork/nfs-server-alpine:9
 
 echo_g "All Image downloaded "

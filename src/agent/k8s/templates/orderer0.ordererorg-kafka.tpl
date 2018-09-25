@@ -55,17 +55,17 @@ spec:
          - mountPath: /var/hyperledger/orderer/msp
            name: certificate
            #subPath: crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp
-           subPath: orderers/orderer0.ordererorg/msp
+           subPath: orderers/orderer.example.com/msp
          - mountPath: /var/hyperledger/orderer/tls
            name: certificate
            #subPath: crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/
-           subPath: orderers/orderer0.ordererorg/tls
+           subPath: orderers/orderer.example.com/tls
          - mountPath: /var/hyperledger/orderer/orderer.genesis.block
            name: certificate
-           subPath: genesis.block
+           subPath: orderer.genesis.block
          - mountPath: /var/hyperledger/production
            name: certificate
-           subPath: orderers/orderer0.ordererorg/production
+           subPath: orderers/orderer.example.com/production
       volumes:
        - name: certificate
          persistentVolumeClaim:
@@ -106,6 +106,8 @@ spec:
           value: "3"
         - name: KAFKA_ZOOKEEPER_CONNECT
           value: "zookeeper0:2181,zookeeper1:2181,zookeeper2:2181"
+        - name: KAFKA_ZOOKEEPER_CONNECTION_TIMEOUT_MS
+          value: "36000"
         - name: KAFKA_ADVERTISED_HOST_NAME
           value: "kafka0"
         ports:
@@ -146,6 +148,8 @@ spec:
           value: "3"
         - name: KAFKA_ZOOKEEPER_CONNECT
           value: "zookeeper0:2181,zookeeper1:2181,zookeeper2:2181"
+        - name: KAFKA_ZOOKEEPER_CONNECTION_TIMEOUT_MS
+          value: "36000"
         - name: KAFKA_ADVERTISED_HOST_NAME
           value: "kafka1"
         ports:
@@ -186,6 +190,8 @@ spec:
           value: "3"
         - name: KAFKA_ZOOKEEPER_CONNECT
           value: "zookeeper0:2181,zookeeper1:2181,zookeeper2:2181"
+        - name: KAFKA_ZOOKEEPER_CONNECTION_TIMEOUT_MS
+          value: "36000"
         - name: KAFKA_ADVERTISED_HOST_NAME
           value: "kafka2"
         ports:

@@ -6,7 +6,7 @@ import os
 import sys
 
 from agent import K8sClusterOperation
-from agent import KubernetesHost
+from agent import KubernetesOperation
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from common import log_handler, LOG_LEVEL
@@ -38,15 +38,15 @@ class ClusterOnKubernetes(ClusterBase):
         cluster = ClusterModel.objects.get(id=cid)
 
         cluster_name = cluster.name
-        kube_config = KubernetesHost().get_kubernets_config(cluster
-                                                            .host
-                                                            .k8s_param)
+        kube_config = KubernetesOperation()._get_config_from_params(cluster
+                                                                    .host
+                                                                    .k8s_param)
 
         clusters_exists = ClusterModel.objects(host=cluster.host)
         ports_index = [service.port for service in ServicePort
                        .objects(cluster__in=clusters_exists)]
 
-        nfsServer_ip = cluster.host.k8s_param.get('nfsServer')
+        nfsServer_ip = cluster.host.k8s_param.get('K8SNfsServer')
         consensus = config['consensus_plugin']
 
         return cluster, cluster_name, kube_config, ports_index, \
@@ -58,6 +58,8 @@ class ClusterOnKubernetes(ClusterBase):
                 consensus = self._get_cluster_info(cid, config)
 
             operation = K8sClusterOperation(kube_config)
+            cluster_name = self.trim_cluster_name(cluster_name)
+
             containers = operation.deploy_cluster(cluster_name,
                                                   ports_index,
                                                   nfsServer_ip,
@@ -73,6 +75,7 @@ class ClusterOnKubernetes(ClusterBase):
                 consensus = self._get_cluster_info(cid, config)
 
             operation = K8sClusterOperation(kube_config)
+            cluster_name = self.trim_cluster_name(cluster_name)
             operation.delete_cluster(cluster_name,
                                      ports_index,
                                      nfsServer_ip,
@@ -98,11 +101,12 @@ class ClusterOnKubernetes(ClusterBase):
             cluster = ClusterModel.objects.get(id=cid)
 
             cluster_name = cluster.name
-            kube_config = KubernetesHost().get_kubernets_config(cluster
-                                                                .host
-                                                                .k8s_param)
+            kube_config = \
+                KubernetesOperation()._get_config_from_params(cluster.host
+                                                              .k8s_param)
 
             operation = K8sClusterOperation(kube_config)
+            cluster_name = self.trim_cluster_name(cluster_name)
             services_urls = operation.get_services_urls(cluster_name)
         except Exception as e:
             logger.error("Failed to get Kubernetes services's urls: {}"
@@ -117,6 +121,7 @@ class ClusterOnKubernetes(ClusterBase):
                 consensus = self._get_cluster_info(name, config)
 
             operation = K8sClusterOperation(kube_config)
+            cluster_name = self.trim_cluster_name(cluster_name)
             containers = operation.start_cluster(cluster_name, ports_index,
                                                  nfsServer_ip, consensus)
 
@@ -150,6 +155,7 @@ class ClusterOnKubernetes(ClusterBase):
                 consensus = self._get_cluster_info(name, config)
 
             operation = K8sClusterOperation(kube_config)
+            cluster_name = self.trim_cluster_name(cluster_name)
             operation.stop_cluster(cluster_name,
                                    ports_index,
                                    nfsServer_ip,
@@ -177,3 +183,8 @@ class ClusterOnKubernetes(ClusterBase):
         else:
             logger.error("Failed to Restart Kubernetes Cluster")
             return None
+
+    def trim_cluster_name(self, cluster_name):
+        if cluster_name.find("_") != -1:
+            cluster_name = cluster_name.replace("_", "-")
+        return cluster_name.lower()

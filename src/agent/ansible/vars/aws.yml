@@ -3,7 +3,7 @@
 auth: {
   auth_url: "",
   # This should be your AWS Access Key ID
-  username: "AKIAJY32VWHYOFOR4J7Q",
+  username: "{{ username | default(lookup('env', 'AWS_ACCESS_KEY_ID')) }}",
   # This should be your AWS Secret Access Key
   # can be passed as part of cmd line when running the playbook
   password: "{{ password | default(lookup('env', 'AWS_SECRET_KEY')) }}"
@@ -22,7 +22,7 @@ cluster: {
   ssh_user: "ubuntu",
   validate_certs: True,
   private_net_name: "demonet",
-
+  root_block_device_name: "/dev/sda1", # the name by which AWS mounts the root volume as - typically /dev/sda
   public_key_file: "/home/ubuntu/.ssh/fd.pub",
   private_key_file: "/home/ubuntu/.ssh/fd",
   ssh_key_name: "fabric",

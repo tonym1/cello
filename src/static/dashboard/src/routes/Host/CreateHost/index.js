@@ -14,6 +14,7 @@ import styles from './index.less';
 
 const FormItem = Form.Item;
 const { Option } = Select;
+const { TextArea } = Input;
 
 const messages = defineMessages({
   updateTitle: {
@@ -61,6 +62,46 @@ const messages = defineMessages({
       id: 'Host.Create.Validate.Label.Filled',
       defaultMessage: 'Auto Filled',
     },
+    credentialType: {
+      id: 'Host.Create.Validate.Label.CredentialType',
+      defaultMessage: 'Credential Type',
+    },
+    certificateContent: {
+      id: 'Host.Create.Validate.Label.CertificateContent',
+      defaultMessage: 'Certificate Content',
+    },
+    certificateKey: {
+      id: 'Host.Create.Validate.Label.CertificateKey',
+      defaultMessage: 'Certificate Key',
+    },
+    configurationContent: {
+      id: 'Host.Create.Validate.Label.ConfigurationContent',
+      defaultMessage: 'Configuration Content',
+    },
+    username: {
+      id: 'Host.Create.Validate.Label.Username',
+      defaultMessage: 'Username',
+    },
+    password: {
+      id: 'Host.Create.Validate.Label.Password',
+      defaultMessage: 'Password',
+    },
+    extraParameters: {
+      id: 'Host.Create.Validate.Label.ExtraParameters',
+      defaultMessage: 'Extra Parameters',
+    },
+    NFSServer: {
+      id: 'Host.Create.Validate.Label.NFSServer',
+      defaultMessage: 'NFS Server Address',
+    },
+    useSSL: {
+      id: 'Host.Create.Validate.Label.UseSSL',
+      defaultMessage: 'Use SSL Verification',
+    },
+    sslCa: {
+      id: 'Host.Create.Validate.Label.SSLCa',
+      defaultMessage: 'SSL CA',
+    },
   },
   button: {
     submit: {
@@ -77,6 +118,10 @@ const messages = defineMessages({
       workerApi: {
         id: 'Host.Create.Validate.Error.WorkerApi',
         defaultMessage: 'Please input validate worker api.',
+      },
+      NFSServer: {
+        id: 'Host.Create.Validate.Error.NFSServer',
+        defaultMessage: 'Please input validate NFS Server address.',
       },
     },
     required: {
@@ -104,6 +149,38 @@ const messages = defineMessages({
         id: 'Host.Create.Validate.Required.LogLevel',
         defaultMessage: 'Please select a log level.',
       },
+      credentialType: {
+        id: 'Host.Create.Validate.Required.CredentialType',
+        defaultMessage: 'Please select a credential type.',
+      },
+      certificateContent: {
+        id: 'Host.Create.Validate.Required.CertificateContent',
+        defaultMessage: 'Please input certificate content.',
+      },
+      certificateKey: {
+        id: 'Host.Create.Validate.Required.CertificateKey',
+        defaultMessage: 'Please input certificate key.',
+      },
+      sslCa: {
+        id: 'Host.Create.Validate.Required.SSLCa',
+        defaultMessage: 'Please input ssl ca cert.',
+      },
+      configurationContent: {
+        id: 'Host.Create.Validate.Required.ConfigurationContent',
+        defaultMessage: 'Please input configuration content.',
+      },
+      username: {
+        id: 'Host.Create.Validate.Required.Username',
+        defaultMessage: 'Please input username.',
+      },
+      password: {
+        id: 'Host.Create.Validate.Required.Username',
+        defaultMessage: 'Please input password.',
+      },
+      NFSServer: {
+        id: 'Host.Create.Validate.Required.NFSServer',
+        defaultMessage: 'Please input NFS server address.',
+      },
     },
   },
 });
@@ -129,10 +206,28 @@ class CreateHost extends PureComponent {
     const { hosts } = host;
     const filterHosts = hosts.filter(hostItem => hostItem.id === hostId);
     const currentHost = filterHosts.length > 0 ? filterHosts[0] : {};
+    const hostTypeValues = ['docker', 'swarm', 'kubernetes', 'vsphere'];
+    const k8sCredTypes = [
+      {
+        id: '1',
+        name: 'cert_key',
+      },
+      {
+        id: '2',
+        name: 'config',
+      },
+      {
+        id: '0',
+        name: 'username_password',
+      },
+    ];
     this.state = {
       schedulable: action === 'create' ? true : currentHost.schedulable === 'true',
       autofill: action === 'create' ? false : currentHost.autofill === 'true',
       submitting: false,
+      hostType: action === 'create' ? hostTypeValues[0] : currentHost.type,
+      k8sCredType: action === 'create' ? k8sCredTypes[0].id : currentHost.k8sCredType,
+      k8sUseSSL: action === 'create' ? true : currentHost.k8sUseSSL === 'true',
     };
   }
   changeSchedulable = checked => {
@@ -151,6 +246,18 @@ class CreateHost extends PureComponent {
         pathname: '/host',
       })
     );
+  };
+  validateNfsServer = (rule, value, callback) => {
+    const { intl } = this.props;
+    if (value) {
+      if (!isIP(value)) {
+        callback(intl.formatMessage(messages.validate.error.NFSServer));
+      } else {
+        callback();
+      }
+    } else {
+      callback();
+    }
   };
   validateWorkerApi = (rule, value, callback) => {
     const { intl } = this.props;
@@ -184,39 +291,53 @@ class CreateHost extends PureComponent {
     const action = search.get('action') || 'create';
     this.props.form.validateFieldsAndScroll((err, values) => {
       if (!err) {
-        const { schedulable, autofill } = this.state;
+        const { schedulable, autofill, k8sUseSSL } = this.state;
         this.setState({
           submitting: true,
         });
+        const data = {
+          ...values,
+          schedulable: schedulable ? 'on' : 'off',
+          autofill: autofill ? 'on' : 'off',
+          callback: this.submitCallback,
+        };
+        if (values.host_type === 'kubernetes') {
+          data.k8s_ssl = k8sUseSSL ? 'on' : 'off';
+        }
         if (action === 'create') {
           this.props.dispatch({
             type: 'host/createHost',
-            payload: {
-              ...values,
-              schedulable: schedulable ? 'on' : 'off',
-              autofill: autofill ? 'on' : 'off',
-              callback: this.submitCallback,
-            },
+            payload: data,
           });
         } else {
-          delete values.host_type;
+          data.id = hostId;
+          delete data.host_type;
           this.props.dispatch({
             type: 'host/updateHost',
-            payload: {
-              ...values,
-              schedulable: schedulable ? 'true' : 'false',
-              autofill: autofill ? 'true' : 'false',
-              id: hostId,
-              callback: this.submitCallback,
-            },
+            payload: data,
           });
         }
       }
     });
   };
+  hostTypeChange = value => {
+    this.setState({
+      hostType: value,
+    });
+  };
+  k8sCredTypeChange = value => {
+    this.setState({
+      k8sCredType: value,
+    });
+  };
+  k8sUseSSLChange = checked => {
+    this.setState({
+      k8sUseSSL: checked,
+    });
+  };
   render() {
     const { getFieldDecorator } = this.props.form;
-    const { schedulable, autofill, submitting } = this.state;
+    const { schedulable, autofill, submitting, hostType, k8sCredType, k8sUseSSL } = this.state;
     const { intl, host } = this.props;
     const location = this.props.location || this.context.location;
     const search = new URLSearchParams(location.search);
@@ -261,6 +382,23 @@ class CreateHost extends PureComponent {
       <Option value={item}>
         <span className={styles.upperText}>{item}</span>
       </Option>
+    ));
+    const k8sCredTypes = [
+      {
+        id: '1',
+        name: 'cert_key',
+      },
+      {
+        id: '2',
+        name: 'config',
+      },
+      {
+        id: '0',
+        name: 'username_password',
+      },
+    ];
+    const k8sCredTypeOptions = k8sCredTypes.map(item => (
+      <Option value={item.id}>{item.name}</Option>
     ));
     return (
       <PageHeaderLayout
@@ -308,13 +446,7 @@ class CreateHost extends PureComponent {
                     validator: this.validateWorkerApi,
                   },
                 ],
-              })(
-                <Input
-                  disabled={action === 'update'}
-                  addonBefore="tcp://"
-                  placeholder="192.168.0.1:2375"
-                />
-              )}
+              })(<Input disabled={action === 'update'} placeholder="192.168.0.1:2375" />)}
             </FormItem>
             <FormItem {...formItemLayout} label={intl.formatMessage(messages.label.capacity)}>
               {getFieldDecorator('capacity', {
@@ -343,8 +475,154 @@ class CreateHost extends PureComponent {
                     message: intl.formatMessage(messages.validate.required.hostType),
                   },
                 ],
-              })(<Select disabled={action === 'update'}>{hostTypeOptions}</Select>)}
+              })(
+                <Select onChange={this.hostTypeChange} disabled={action === 'update'}>
+                  {hostTypeOptions}
+                </Select>
+              )}
             </FormItem>
+            {hostType === 'kubernetes' && (
+              <div>
+                <FormItem
+                  {...formItemLayout}
+                  label={intl.formatMessage(messages.label.credentialType)}
+                >
+                  {getFieldDecorator('k8s_cred_type', {
+                    initialValue: k8sCredType,
+                    rules: [
+                      {
+                        required: true,
+                        message: intl.formatMessage(messages.validate.required.credentialType),
+                      },
+                    ],
+                  })(
+                    <Select onChange={this.k8sCredTypeChange} disabled={action === 'update'}>
+                      {k8sCredTypeOptions}
+                    </Select>
+                  )}
+                </FormItem>
+                {k8sCredType === '1' && (
+                <div>
+                  <FormItem
+                    {...formItemLayout}
+                    label={intl.formatMessage(messages.label.certificateContent)}
+                  >
+                    {getFieldDecorator('k8s_cert', {
+                      rules: [
+                        {
+                          required: true,
+                          message: intl.formatMessage(
+                            messages.validate.required.certificateContent
+                          ),
+                        },
+                      ],
+                    })(<TextArea rows={4} placeholder={intl.formatMessage(messages.label.certificateContent)} />)}
+                  </FormItem>
+                  <FormItem
+                    {...formItemLayout}
+                    label={intl.formatMessage(messages.label.certificateKey)}
+                  >
+                    {getFieldDecorator('k8s_key', {
+                     rules: [
+                       {
+                         required: true,
+                         message: intl.formatMessage(
+                           messages.validate.required.certificateKey
+                         ),
+                       },
+                     ],
+                   })(<TextArea rows={4} placeholder={intl.formatMessage(messages.label.certificateKey)} />)}
+                  </FormItem>
+                </div>
+                )}
+                {k8sCredType === '2' && (
+                  <FormItem
+                    {...formItemLayout}
+                    label={intl.formatMessage(messages.label.configurationContent)}
+                  >
+                    {getFieldDecorator('k8s_config', {
+                      rules: [
+                        {
+                          required: true,
+                          message: intl.formatMessage(
+                            messages.validate.required.configurationContent
+                          ),
+                        },
+                      ],
+                    })(<TextArea rows={4} />)}
+                  </FormItem>
+                )}
+                {k8sCredType === '0' && (
+                  <div>
+                    <FormItem
+                      {...formItemLayout}
+                      label={intl.formatMessage(messages.label.username)}
+                    >
+                      {getFieldDecorator('k8s_username', {
+                        rules: [
+                          {
+                            required: true,
+                            message: intl.formatMessage(messages.validate.required.username),
+                          },
+                        ],
+                      })(<Input placeholder={intl.formatMessage(messages.label.username)} />)}
+                    </FormItem>
+                    <FormItem
+                      {...formItemLayout}
+                      label={intl.formatMessage(messages.label.password)}
+                    >
+                      {getFieldDecorator('k8s_password', {
+                        rules: [
+                          {
+                            required: true,
+                            message: intl.formatMessage(messages.validate.required.password),
+                          },
+                        ],
+                      })(<Input placeholder={intl.formatMessage(messages.label.password)} />)}
+                    </FormItem>
+                  </div>
+                )}
+                <FormItem
+                  {...formItemLayout}
+                  label={intl.formatMessage(messages.label.extraParameters)}
+                >
+                  {getFieldDecorator('k8s_extra_params', {})(<Input />)}
+                </FormItem>
+                <FormItem {...formItemLayout} label={intl.formatMessage(messages.label.NFSServer)}>
+                  {getFieldDecorator('k8s_nfs_server', {
+                    rules: [
+                      {
+                        required: true,
+                        message: intl.formatMessage(messages.validate.required.NFSServer),
+                      },
+                      {
+                        validator: this.validateNfsServer,
+                      },
+                    ],
+                  })(<Input placeholder="192.168.0.1" />)}
+                </FormItem>
+                <FormItem {...formItemLayout} label={intl.formatMessage(messages.label.useSSL)}>
+                  {getFieldDecorator('k8s_ssl', {})(
+                    <Switch checked={k8sUseSSL} onChange={this.k8sUseSSLChange} />
+                  )}
+                </FormItem>
+                {k8sUseSSL && (
+                <FormItem
+                  {...formItemLayout}
+                  label={intl.formatMessage(messages.label.sslCa)}
+                >
+                  {getFieldDecorator('ssl_ca', {
+                    rules: [
+                      {
+                        required: true,
+                        message: intl.formatMessage(messages.validate.required.sslCa),
+                      },
+                    ],
+                  })(<TextArea rows={4} placeholder={intl.formatMessage(messages.label.sslCa)} />)}
+                </FormItem>
+)}
+              </div>
+            )}
             <FormItem {...formItemLayout} label={intl.formatMessage(messages.label.logLevel)}>
               {getFieldDecorator('log_level', {
                 initialValue: action === 'create' ? logLevelValues[0] : currentHost.log_level,

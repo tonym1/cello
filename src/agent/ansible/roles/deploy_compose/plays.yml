@@ -1,33 +1,50 @@
 ---
-- name: build fabric artifacts
-  hosts: builders
-  gather_facts: true
-  user: "{{ fabric.ssh_user }}"
+- name: get fabric crypto tool
+  hosts: cloud
+  connection: local
+  become: true
+  become_user: root
   vars_files:
     - "./../../vars/{{ env }}.yml"
   tasks:
-    - include_tasks: "fabricbuild/tasks/{{ mode }}.yml"
-  tags: "fabricbuild"
+    - include_tasks: "../deploy_compose/getbin/tasks/{{ mode }}.yml"
+  tags: "getbin"
 
 - name: generate certificates
-  hosts: builders
-  gather_facts: false
-  user: "{{ fabric.ssh_user }}"
+  hosts: cloud
+  connection: local
+  become: true
+  become_user: root
   vars_files:
     - "./../../vars/{{ env }}.yml"
   tasks:
-    - include: "certsetup/tasks/{{ mode }}.yml"
+    - include_tasks: "../deploy_compose/certsetup/tasks/{{ mode }}.yml"
+      when: fabric.generate_certs == true
   tags: "certsetup"
 
 - name: setup fabric network
   hosts: allnodes
+  become: true
+  become_user: root
   gather_facts: false
   user: "{{ fabric.ssh_user }}"
   vars_files:
     - "./../../vars/{{ env }}.yml"
   tasks:
-    - include: "fabricsetup/tasks/{{ mode }}.yml"
+    - include_tasks: "fabricsetup/tasks/{{ mode }}.yml"
   tags: "fabricsetup"
+
+- name: setup test channel and chaincode
+  hosts: builders
+  become: true
+  become_user: root
+  gather_facts: false
+  user: "{{ fabric.ssh_user }}"
+  vars_files:
+    - "./../../vars/{{ env }}.yml"
+  tasks:
+    - include_tasks: "chaincodesetup/tasks/{{ mode }}.yml"
+  tags: "chaincodesetup"
 
 - name: setup composer
   hosts: builders
@@ -36,5 +53,6 @@
   vars_files:
     - "./../../vars/{{ env }}.yml"
   tasks:
-    - include: "composersetup/tasks/{{ mode }}.yml"
+    - include_tasks: "composersetup/tasks/{{ mode }}.yml"
+      when: fabric.composer == true or fabric.composer is undefined
   tags: "composersetup"

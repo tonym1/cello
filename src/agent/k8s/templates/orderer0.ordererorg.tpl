@@ -46,23 +46,21 @@ spec:
         volumeMounts:
          - mountPath: /var/hyperledger/orderer/msp
            name: certificate
-           #subPath: crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp
-           subPath: orderers/orderer0.ordererorg/msp
+           subPath: orderers/orderer.example.com/msp
          - mountPath: /var/hyperledger/orderer/tls
            name: certificate
            #subPath: crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/
-           subPath: orderers/orderer0.ordererorg/tls
+           subPath: orderers/orderer.example.com/tls
          - mountPath: /var/hyperledger/orderer/orderer.genesis.block
            name: certificate
-           subPath: genesis.block
+           subPath: orderer.genesis.block
          - mountPath: /var/hyperledger/production
            name: certificate
-           subPath: orderers/orderer0.ordererorg/production
+           subPath: orderers/orderer.example.com/production
       volumes:
        - name: certificate
          persistentVolumeClaim:
              claimName: {{clusterName}}-ordererorg-pvc
-           #path: /opt/share
          #persistentVolumeClaim:
          #  claimName: nfs
 

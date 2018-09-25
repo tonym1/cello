@@ -2,29 +2,28 @@
 
 ## Overview
 
-The Cello system is suggested to be deployed on multiple servers, at least 1 Master Node + 1 Worker Node.
+It is suggested to deploy Cello on multiple servers, at least 1 Master + N (N>=1) Workers.
 
-* `Master` Node: Running Cello services, which will manage the worker nodes.
-* `Worker` Node: The servers to have blockchains running inside. The worker nodes will be managed by the master node.
-* `Host`: Host is a resource pool managed by a unique control point, which consists of several compute nodes. Typically it can be a naive Docker host, a Swarm cluster or other bare-metal/virtual/container clusters.
-* `Chain` (`Cluster`): A blockchain network including numbers of peer nodes. E.g., a Hyperledger Fabric network, a Sawthooth Lake or Iroha chain.
-
+* `Master`: Management node to run Cello services.
+* `Worker`: Platforms (e.g., Docker, Swarm, Kubernetes, vSphere Cloud) to host blockchains. The `Worker` will be managed by the `Master`.
+* `Host`: Typical `worker` that the resource will be managed by a unique platform. Typically it can be a naive Docker host, a Swarm cluster, a Kubernetes clsuter, or other bare-metal/virtual/container clusters.
+* `Chain` (`Cluster`): Blockchain network including numbers of peer+orderer nodes. E.g., a Hyperledger Fabric network, a Sawthooth Lake or Iroha chain.
 
 ## Master
 
-The `Master` Node will hold the main Cello [services](service_management.md).
+The `Master` will hold the main Cello [services](service_management.md).
 
-This node is the control point of the whole Cello cluster, and most of the management work should be taken here.
+This is the control panel of the whole Cello service, and most of the management work should be handled here.
 
-`Master` node will manage the blockchain networks running inside the `Worker` nodes.
+`Master` will manage the blockchain networks running inside the `Workers`.
 
 ## Worker
 
-`Worker` nodes will be managed by the `Host`'s control service, and hold the blockchains.
+`Workers` will be managed by the `Master` service, and help host the blockchains.
 
 ## Hosts
 
-A host is a group of worker nodes managed by the same resource controller, which can be a native Docker Host or a Swarm Cluster currently.
+A host is a group of resources managed by the same resource controller, which can be a native Docker Host, a Swarm Cluster, a Kubernetes Cluster, or some Cloud currently.
 
 Usually a host has several properties:
 
