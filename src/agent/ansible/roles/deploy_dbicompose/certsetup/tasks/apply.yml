@@ -1,13 +1,16 @@
 ---
+- name: Reuse common code
+  include_tasks: "{{ playbook_dir }}/../common/config_apply.yml"
+
 - name: Setup few variables
   set_fact:
     dbipath: "/home/{{ fabric.ssh_user }}/dbi"
     fabricworkdir: "/home/{{ fabric.ssh_user }}/dbi/test/fixtures-V1"
     fabricpath: "/opt/gopath/{{ env }}/src/github.com/hyperledger/fabric"
     gopath: "/opt/gopath/{{ env }}"
-#    project_version: >-
-#      {{ fabric.baseimage_tag |
-#         regex_replace('.*([0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}).*', '\1') }}
+    project_version: >-
+      {{ fabric.baseimage_tag |
+         regex_replace('.*([0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}).*', '\1') }}
 
 - name: Create component list
   set_fact:
@@ -91,7 +94,7 @@
     dest: "{{ fabricworkdir }}/crypto-config.yml"
 
 - name: Create the certificate files
-  command: "{{ fabricpath }}/build/bin/cryptogen generate --config crypto-config.yml --output keyfiles"
+  command: "{{ fabricworkdir }}/linux-amd64/bin/cryptogen generate --config crypto-config.yml --output keyfiles"
   args:
     chdir: "{{ fabricworkdir }}"
 
@@ -118,9 +121,9 @@
 - name: Create the gensis block and channel transaction
   shell: >-
     export FABRIC_CFG_PATH={{ fabricworkdir }} &&
-    {{ fabricpath }}/build/bin/configtxgen -profile OrdererGenesis
+    {{ fabricworkdir }}/linux-amd64/bin/configtxgen -profile OrdererGenesis
     -outputBlock keyfiles/genesis.block -channelID orderersystemchannel &&
-    {{ fabricpath }}/build/bin/configtxgen -profile OrgChannel
+    {{ fabricworkdir }}/linux-amd64/bin/configtxgen -profile OrgChannel
     -outputCreateChannelTx keyfiles/mychannel.tx -channelID mychannel
   args:
     chdir: "{{ fabricworkdir }}"
@@ -128,7 +131,7 @@
 - name: Define the anchor peer for organizations
   shell: >-
     export FABRIC_CFG_PATH={{ fabricworkdir }} &&
-    {{ fabricpath }}/build/bin/configtxgen -profile OrgChannel
+    {{ fabricworkdir }}/linux-amd64/bin/configtxgen -profile OrgChannel
     -outputAnchorPeersUpdate keyfiles/{{ item }}.anchor.tx
     -channelID mychannel -asOrg {{ item }}
   args:

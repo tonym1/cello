@@ -10,6 +10,7 @@
   file: 
     path: /home/ubuntu/dbi
     state: absent
+  ignore_errors: yes
 
 - name: Uninstall NPM packages - Gulp, Mocha, Bower
   npm:
@@ -18,6 +19,7 @@
     state: absent
   with_items:
     - ['gulp', 'mocha', 'bower', 'pm2']
+  ignore_errors: yes
 
 - name: Uninstall Node
   become: true
@@ -25,6 +27,7 @@
   apt:
    name: nodejs
    state: absent
+  ignore_errors: yes
 
 - name: Uninstall pip and upgrade
   pip:
@@ -37,11 +40,13 @@
     - { name: "docker-compose" }
     - { name: "protobuf" }
     - { name: "couchdb==1.0" }
+  ignore_errors: yes
 
 - name: node nose cleanup 
   file:
     path: /usr/local/man/man1
     state: absent
+  ignore_errors: yes
 
 - name: Uninstall packages
   apt:
@@ -49,6 +54,7 @@
     state: absent
   with_items:
     - ['python-pip', 'docker-ce', 'libtool', 'libltdl-dev', 'autoconf']
+  ignore_errors: yes
 #    - ['docker.io', 'python-dev', 'python-pip', 'libtool', 'libltdl-dev']
 #    - ['git', 'net-tools', 'netcat-openbsd', 'autoconf', 'automake']
 #    - ['libtool', 'curl', 'make', 'g++', 'unzip', 'build-essential']
